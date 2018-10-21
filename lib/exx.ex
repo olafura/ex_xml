@@ -4,6 +4,8 @@ defmodule Exx do
   """
   import NimbleParsec
 
+  alias __MODULE__.{Element, Fragment}
+
   whitespace = ascii_string([?\s, ?\n], max: 100)
 
   tag =
@@ -168,11 +170,23 @@ defmodule Exx do
     exx
   end
 
-  defp fix_element([element | nested]) do
-    tag = elem(element, 1) |> List.first()
+  defp fix_element_based_on_type(:fragment, content, nested) do
+    meta = Enum.reduce(content, %{}, &get_meta_content/2)
+    {closing_fragment, new_nested} = List.pop_at(nested, -1)
+
+    if {:closing_fragment, []} !== closing_fragment do
+      raise "Fragment isn't closed"
+    end
+
+    struct(Fragment, Map.put(meta, :children, new_nested))
+  end
+
+  defp fix_element_based_on_type(:element, content, nested) do
+    meta = Enum.reduce(content, %{}, &get_meta_content/2)
+    tag = List.first(content)
     {closing_tag, new_nested} = List.pop_at(nested, -1)
 
-    if not (is_nil(closing_tag) or tag === "" or is_tuple(tag) or {:closing_fragment, []} === closing_tag or {:closing_tag, List.wrap(tag)} === closing_tag) do
+    if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
       with {:closing_tag, cl_tag} <- closing_tag do
         raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(cl_tag)}"
       else
@@ -181,11 +195,25 @@ defmodule Exx do
       end
     end
 
-    Tuple.append(element, new_nested)
+    struct(Element, Map.put(meta, :children, new_nested))
+  end
+
+  defp fix_element([{type, content} | nested]) do
+    fix_element_based_on_type(type, content, nested)
   end
 
   defp fix_element(other) do
     other
+  end
+
+  def get_meta_content({:attribute, [{:tag, [key]}, value]}, acc) do
+    Map.update(acc, :attributes, %{key => value}, &Map.put(&1, key, value))
+  end
+
+  def get_meta_content({:element_name, [{type, [name]}]}, acc) do
+    acc
+    |> Map.put(:name, name)
+    |> Map.put(:type, type)
   end
 
   defp clean_litteral(

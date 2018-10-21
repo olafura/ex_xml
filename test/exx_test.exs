@@ -9,6 +9,7 @@ defmodule ExxTest do
     assert {:ok, _} =
              ~x(<foo something=#{{1, 1}}><bar2 something="a"/><a>2</a></foo>)raw
              |> parse_exx()
+             |> IO.inspect()
   end
 
   test "test simple exx with fragment" do
@@ -22,6 +23,7 @@ defmodule ExxTest do
         </>
       )raw
     |> parse_exx()
+    |> IO.inspect()
   end
 
   test "test simple exx with module name" do
@@ -35,5 +37,6 @@ defmodule ExxTest do
         </>
       )raw
       |> parse_exx()
+      |> IO.inspect()
   end
 end
