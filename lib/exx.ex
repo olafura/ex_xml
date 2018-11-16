@@ -6,6 +6,13 @@ defmodule Exx do
 
   alias __MODULE__.{Element, Fragment}
 
+  defmacro __using__(_opts) do
+    quote do
+      require Exx
+      import Exx
+    end
+  end
+
   whitespace =
     ascii_string([?\s, ?\n, ?\t], max: 100)
     |> label("whitespace")
@@ -177,7 +184,45 @@ defmodule Exx do
       |> Enum.map(&clean_litteral/1)
       |> parse_exx()
 
-    exx
+    case Module.get_attribute(__CALLER__.module, :process_exx) do
+      nil ->
+        {:ok, escape_exx(exx)}
+      process_exx ->
+        process_exx.(exx)
+    end
+  end
+
+  def escape_exx(list) when is_list(list) do
+    do_escape_exx(list)
+  end
+
+  defp do_escape_exx(list) when is_list(list) do
+    Enum.map(list, &do_escape_exx/1)
+  end
+
+  defp do_escape_exx(%{__struct__: module} = struct) do
+    keyword_list =
+      struct
+      |> Map.from_struct()
+      |> Enum.map(&do_escape_exx/1)
+
+    {:%, [], [{:__aliases__, [alias: false], [module]}, {:%{}, [], keyword_list}]}
+  end
+
+  defp do_escape_exx(%{} = map) do
+    keyword_list =
+      map
+      |> Enum.map(&do_escape_exx/1)
+
+    {:%{}, [], keyword_list}
+  end
+
+  defp do_escape_exx({key, value}) do
+    {key, do_escape_exx(value)}
+  end
+
+  defp do_escape_exx(other) do
+    other
   end
 
   defp fix_element_based_on_type(:fragment, content, nested) do

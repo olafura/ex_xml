@@ -1,8 +1,7 @@
 defmodule ExxTest do
   use ExUnit.Case
-  require Exx
-  import Exx
 
+  use Exx
   doctest Exx
 
   test "test simple exx" do
