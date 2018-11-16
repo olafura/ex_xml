@@ -6,7 +6,9 @@ defmodule Exx do
 
   alias __MODULE__.{Element, Fragment}
 
-  whitespace = ascii_string([?\s, ?\n], max: 100)
+  whitespace =
+    ascii_string([?\s, ?\n, ?\t], max: 100)
+    |> label("whitespace")
 
   tag =
     ascii_char([?a..?z])
@@ -14,6 +16,7 @@ defmodule Exx do
     |> concat(optional(ascii_string([?a..?z, ?_, ?0..?9, not: ?=], min: 1)))
     |> ignore(whitespace)
     |> reduce({Enum, :join, [""]})
+    |> label("tag")
     |> tag(:tag)
 
   module =
@@ -22,22 +25,28 @@ defmodule Exx do
     |> concat(optional(ascii_string([?a..?z, ?0..?9, ?A..?Z, ?., not: ?=], min: 1)))
     |> ignore(whitespace)
     |> reduce({Enum, :join, [""]})
+    |> label("module")
     |> tag(:module)
 
   element_name =
     choice([tag, module])
+    |> label("element_name")
     |> tag(:element_name)
 
   text =
     ignore(whitespace)
     |> utf8_string([not: ?<], min: 1)
+    |> label("text")
 
   sub =
     string("$")
     |> concat(ascii_string([?0..?9], min: 1))
     |> traverse({:sub_context, []})
+    |> label("sub")
 
-  quote_string = ascii_char([?"])
+  quote_string =
+    ascii_char([?"])
+    |> label("quote_string")
 
   quoted_attribute_text =
     ignore(whitespace)
@@ -107,6 +116,7 @@ defmodule Exx do
     ignore(whitespace)
     |> ignore(string("/>"))
     |> ignore(whitespace)
+    |> label("self_closing")
 
   defparsec(
     :parse_xml,
