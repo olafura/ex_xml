@@ -4,7 +4,7 @@ defmodule ExxTest do
   use Exx
   doctest Exx
 
-  @process_exx fn (exx) ->
+  @process_exx fn (exx, _) ->
     {:ok, escape_exx(exx)}
   end
 

@@ -188,7 +188,7 @@ defmodule Exx do
       nil ->
         {:ok, escape_exx(exx)}
       process_exx ->
-        process_exx.(exx)
+        process_exx.(exx, __CALLER__)
     end
   end
 
