@@ -4,7 +4,18 @@ defmodule Exx do
   """
   import NimbleParsec
 
-  whitespace = ascii_string([?\s, ?\n], max: 100)
+  alias __MODULE__.{Element, Fragment}
+
+  defmacro __using__(_opts) do
+    quote do
+      require Exx
+      import Exx
+    end
+  end
+
+  whitespace =
+    ascii_string([?\s, ?\n, ?\t], max: 100)
+    |> label("whitespace")
 
   tag =
     ascii_char([?a..?z])
@@ -12,6 +23,7 @@ defmodule Exx do
     |> concat(optional(ascii_string([?a..?z, ?_, ?0..?9, not: ?=], min: 1)))
     |> ignore(whitespace)
     |> reduce({Enum, :join, [""]})
+    |> label("tag")
     |> tag(:tag)
 
   module =
@@ -20,22 +32,28 @@ defmodule Exx do
     |> concat(optional(ascii_string([?a..?z, ?0..?9, ?A..?Z, ?., not: ?=], min: 1)))
     |> ignore(whitespace)
     |> reduce({Enum, :join, [""]})
+    |> label("module")
     |> tag(:module)
 
   element_name =
     choice([tag, module])
+    |> label("element_name")
     |> tag(:element_name)
 
   text =
     ignore(whitespace)
     |> utf8_string([not: ?<], min: 1)
+    |> label("text")
 
   sub =
     string("$")
     |> concat(ascii_string([?0..?9], min: 1))
     |> traverse({:sub_context, []})
+    |> label("sub")
 
-  quote_string = ascii_char([?"])
+  quote_string =
+    ascii_char([?"])
+    |> label("quote_string")
 
   quoted_attribute_text =
     ignore(whitespace)
@@ -105,6 +123,7 @@ defmodule Exx do
     ignore(whitespace)
     |> ignore(string("/>"))
     |> ignore(whitespace)
+    |> label("self_closing")
 
   defparsec(
     :parse_xml,
@@ -165,14 +184,64 @@ defmodule Exx do
       |> Enum.map(&clean_litteral/1)
       |> parse_exx()
 
-    exx
+    case Module.get_attribute(__CALLER__.module, :process_exx) do
+      nil ->
+        {:ok, escape_exx(exx)}
+      process_exx ->
+        process_exx.(exx)
+    end
   end
 
-  defp fix_element([element | nested]) do
-    tag = elem(element, 1) |> List.first()
+  def escape_exx(list) when is_list(list) do
+    do_escape_exx(list)
+  end
+
+  defp do_escape_exx(list) when is_list(list) do
+    Enum.map(list, &do_escape_exx/1)
+  end
+
+  defp do_escape_exx(%{__struct__: module} = struct) do
+    keyword_list =
+      struct
+      |> Map.from_struct()
+      |> Enum.map(&do_escape_exx/1)
+
+    {:%, [], [{:__aliases__, [alias: false], [module]}, {:%{}, [], keyword_list}]}
+  end
+
+  defp do_escape_exx(%{} = map) do
+    keyword_list =
+      map
+      |> Enum.map(&do_escape_exx/1)
+
+    {:%{}, [], keyword_list}
+  end
+
+  defp do_escape_exx({key, value}) do
+    {key, do_escape_exx(value)}
+  end
+
+  defp do_escape_exx(other) do
+    other
+  end
+
+  defp fix_element_based_on_type(:fragment, content, nested) do
+    meta = Enum.reduce(content, %{}, &get_meta_content/2)
+    {closing_fragment, new_nested} = List.pop_at(nested, -1)
+
+    if {:closing_fragment, []} !== closing_fragment do
+      raise "Fragment isn't closed"
+    end
+
+    struct(Fragment, Map.put(meta, :children, List.flatten(new_nested)))
+  end
+
+  defp fix_element_based_on_type(:element, content, nested) do
+    meta = Enum.reduce(content, %{}, &get_meta_content/2)
+    tag = List.first(content)
     {closing_tag, new_nested} = List.pop_at(nested, -1)
 
-    if not (is_nil(closing_tag) or tag === "" or is_tuple(tag) or {:closing_fragment, []} === closing_tag or {:closing_tag, List.wrap(tag)} === closing_tag) do
+    if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
       with {:closing_tag, cl_tag} <- closing_tag do
         raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(cl_tag)}"
       else
@@ -181,11 +250,25 @@ defmodule Exx do
       end
     end
 
-    Tuple.append(element, new_nested)
+    struct(Element, Map.put(meta, :children, List.flatten(new_nested)))
+  end
+
+  defp fix_element([{type, content} | nested]) do
+    fix_element_based_on_type(type, content, nested)
   end
 
   defp fix_element(other) do
     other
+  end
+
+  def get_meta_content({:attribute, [{:tag, [key]}, value]}, acc) do
+    Map.update(acc, :attributes, %{key => value}, &Map.put(&1, key, value))
+  end
+
+  def get_meta_content({:element_name, [{type, [name]}]}, acc) do
+    acc
+    |> Map.put(:name, name)
+    |> Map.put(:type, type)
   end
 
   defp clean_litteral(
