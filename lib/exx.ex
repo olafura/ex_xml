@@ -199,7 +199,7 @@ defmodule Exx do
     nil
   end
 
-  def sigil_x({:<<>>, _meta, pieces}, '', caller) do
+  def do_sigil_x({:<<>>, _meta, pieces}, '', caller) do
     {:ok, exx} =
       pieces
       |> Enum.map(&clean_litteral/1)
