@@ -188,7 +188,7 @@ defmodule Exx do
       raise "Fragment isn't closed"
     end
 
-    struct(Fragment, Map.put(meta, :children, new_nested))
+    struct(Fragment, Map.put(meta, :children, List.flatten(new_nested)))
   end
 
   defp fix_element_based_on_type(:element, content, nested) do
@@ -205,7 +205,7 @@ defmodule Exx do
       end
     end
 
-    struct(Element, Map.put(meta, :children, new_nested))
+    struct(Element, Map.put(meta, :children, List.flatten(new_nested)))
   end
 
   defp fix_element([{type, content} | nested]) do
