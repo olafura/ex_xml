@@ -165,12 +165,17 @@ defmodule Exx do
     {bin, %{}}
   end
 
-  defmacro sigil_x({:<<>>, _meta, pieces}, 'raw') do
+  defmacro sigil_x(params, options) do
+    caller = __CALLER__
+    do_sigil_x(params, options, caller)
+  end
+
+  def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _) do
     pieces
     |> Enum.map(&clean_litteral/1)
   end
 
-  defmacro sigil_x({:<<>>, _meta, pieces}, 'parse') do
+  def do_sigil_x({:<<>>, _meta, pieces}, 'parse', _) do
     pieces
     |> Enum.map(&clean_litteral/1)
     |> parse_exx()
@@ -178,17 +183,33 @@ defmodule Exx do
     nil
   end
 
-  defmacro sigil_x({:<<>>, _meta, pieces}, '') do
+  def do_sigil_x({:<<>>, _meta, pieces}, 'debug', caller) do
     {:ok, exx} =
       pieces
       |> Enum.map(&clean_litteral/1)
       |> parse_exx()
 
-    case Module.get_attribute(__CALLER__.module, :process_exx) do
+    case Module.get_attribute(caller.module, :process_exx) do
       nil ->
         {:ok, escape_exx(exx)}
       process_exx ->
-        process_exx.(exx, __CALLER__)
+        process_exx.(exx, caller)
+    end
+
+    nil
+  end
+
+  def sigil_x({:<<>>, _meta, pieces}, '', caller) do
+    {:ok, exx} =
+      pieces
+      |> Enum.map(&clean_litteral/1)
+      |> parse_exx()
+
+    case Module.get_attribute(caller.module, :process_exx) do
+      nil ->
+        {:ok, escape_exx(exx)}
+      process_exx ->
+        process_exx.(exx, caller)
     end
   end
 
