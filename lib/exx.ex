@@ -167,15 +167,16 @@ defmodule Exx do
 
   defmacro sigil_x(params, options) do
     caller = __CALLER__
-    do_sigil_x(params, options, caller)
+    module = __MODULE__
+    do_sigil_x(params, options, caller, module)
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _) do
+  def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _, _) do
     pieces
     |> Enum.map(&clean_litteral/1)
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'parse', _) do
+  def do_sigil_x({:<<>>, _meta, pieces}, 'parse', _, _) do
     pieces
     |> Enum.map(&clean_litteral/1)
     |> parse_exx()
@@ -183,33 +184,42 @@ defmodule Exx do
     nil
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'debug', caller) do
+  def do_sigil_x({:<<>>, _meta, pieces}, 'debug', caller, module) do
     {:ok, exx} =
       pieces
       |> Enum.map(&clean_litteral/1)
       |> parse_exx()
 
-    case Module.get_attribute(caller.module, :process_exx) do
-      nil ->
-        {:ok, escape_exx(exx)}
-      process_exx ->
-        process_exx.(exx, caller)
+    ast = if Kernel.function_exported?(module, :process_exx, 2) do
+      module.process_exx(exx, caller)
+    else
+      case Module.get_attribute(caller.module, :process_exx) do
+        nil ->
+          {:ok, escape_exx(exx)}
+        process_exx ->
+          process_exx.(exx, caller)
+      end
     end
 
-    nil
+    ast |> Macro.to_string() |> Code.format_string!() |> IO.puts()
+    ast
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, '', caller) do
+  def do_sigil_x({:<<>>, _meta, pieces}, '', caller, module) do
     {:ok, exx} =
       pieces
       |> Enum.map(&clean_litteral/1)
       |> parse_exx()
 
-    case Module.get_attribute(caller.module, :process_exx) do
-      nil ->
-        {:ok, escape_exx(exx)}
-      process_exx ->
-        process_exx.(exx, caller)
+    if Kernel.function_exported?(module, :process_exx, 2) do
+      module.process_exx(exx, caller)
+    else
+      case Module.get_attribute(caller.module, :process_exx) do
+        nil ->
+          {:ok, escape_exx(exx)}
+        process_exx ->
+          process_exx.(exx, caller)
+      end
     end
   end
 
