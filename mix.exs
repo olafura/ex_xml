@@ -7,7 +7,8 @@ defmodule ExXml.MixProject do
       version: "0.1.0",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package()
     ]
   end
 
@@ -22,6 +23,15 @@ defmodule ExXml.MixProject do
   defp deps do
     [
       {:nimble_parsec, "~> 0.5"},
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Olafur Arason"],
+      licenses: ["Apache-2.0"],
+      links: %{github: "https://github.com/olafura/ex_xml"},
+      files: ~w(lib LICENSE mix.exs README.md)
     ]
   end
 end
