@@ -1,9 +1,9 @@
-defmodule Exx.MixProject do
+defmodule ExXml.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :exx,
+      app: :ex_xml,
       version: "0.1.0",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,

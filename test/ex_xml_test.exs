@@ -1,21 +1,21 @@
-defmodule ExxTest do
+defmodule ExXmlTest do
   use ExUnit.Case
 
-  use Exx
-  doctest Exx
+  use ExXml
+  doctest ExXml
 
-  @process_exx fn (exx, _) ->
-    {:ok, escape_exx(exx)}
+  @process_ex_xml fn (ex_xml, _) ->
+    {:ok, escape_ex_xml(ex_xml)}
   end
 
 
-  test "test simple exx" do
+  test "test simple ex_xml" do
     assert {:ok, _} =
              ~x(<foo something=#{{1, 1}}><bar2 something="a"/><a>2</a></foo>)raw
-             |> parse_exx()
+             |> parse_ex_xml()
   end
 
-  test "test simple exx with fragment" do
+  test "test simple ex_xml with fragment" do
     assert {:ok, _} =
       ~x(
         <>
@@ -27,7 +27,7 @@ defmodule ExxTest do
       )
   end
 
-  test "test simple exx with module name" do
+  test "test simple ex_xml with module name" do
     assert {:ok, _} =
       ~x(
         <>

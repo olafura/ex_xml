@@ -1,4 +1,4 @@
-# Exx - Elixir XML
+# ExXml - Elixir XML
 
 This is pre pre anything. Basic jsx like syntax works.
 
@@ -7,12 +7,12 @@ This is pre pre anything. Basic jsx like syntax works.
 Not really published since there isn't much to publish be when I do ;)
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `exx` to your list of dependencies in `mix.exs`:
+by adding `ex_xml` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:exx, "~> 0.1.0"}
+    {:ex_xml, "~> 0.1.0"}
   ]
 end
 ```

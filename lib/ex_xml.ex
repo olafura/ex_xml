@@ -1,6 +1,6 @@
-defmodule Exx do
+defmodule ExXml do
   @moduledoc """
-  Documentation for Exx.
+  Documentation for ExXml.
   """
   import NimbleParsec
 
@@ -8,7 +8,7 @@ defmodule Exx do
 
   defmacro __using__(_opts) do
     quote do
-      import Exx
+      import ExXml
 
       defmacro sigil_x(params, options) do
         caller = __CALLER__
@@ -147,8 +147,8 @@ defmodule Exx do
     |> reduce({:fix_element, []})
   )
 
-  def parse_exx(exx) do
-    {bin, context} = list_to_context(exx)
+  def parse_ex_xml(ex_xml) do
+    {bin, context} = list_to_context(ex_xml)
 
     with {:ok, results, _, _, _, _} <- parse_xml(String.trim(bin), context: context) do
       {:ok, results}
@@ -182,25 +182,25 @@ defmodule Exx do
   def do_sigil_x({:<<>>, _meta, pieces}, 'parse', _, _) do
     pieces
     |> Enum.map(&clean_litteral/1)
-    |> parse_exx()
+    |> parse_ex_xml()
 
     nil
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, 'debug', caller, module) do
-    {:ok, exx} =
+    {:ok, ex_xml} =
       pieces
       |> Enum.map(&clean_litteral/1)
-      |> parse_exx()
+      |> parse_ex_xml()
 
-    ast = if Kernel.function_exported?(module, :process_exx, 2) do
-      module.process_exx(exx, caller)
+    ast = if Kernel.function_exported?(module, :process_ex_xml, 2) do
+      module.process_ex_xml(ex_xml, caller)
     else
-      case Module.get_attribute(caller.module, :process_exx) do
+      case Module.get_attribute(caller.module, :process_ex_xml) do
         nil ->
-          {:ok, escape_exx(exx)}
-        process_exx ->
-          process_exx.(exx, caller)
+          {:ok, escape_ex_xml(ex_xml)}
+        process_ex_xml ->
+          process_ex_xml.(ex_xml, caller)
       end
     end
 
@@ -209,53 +209,53 @@ defmodule Exx do
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, '', caller, module) do
-    {:ok, exx} =
+    {:ok, ex_xml} =
       pieces
       |> Enum.map(&clean_litteral/1)
-      |> parse_exx()
+      |> parse_ex_xml()
 
-    if Kernel.function_exported?(module, :process_exx, 2) do
-      module.process_exx(exx, caller)
+    if Kernel.function_exported?(module, :process_ex_xml, 2) do
+      module.process_ex_xml(ex_xml, caller)
     else
-      case Module.get_attribute(caller.module, :process_exx) do
+      case Module.get_attribute(caller.module, :process_ex_xml) do
         nil ->
-          {:ok, escape_exx(exx)}
-        process_exx ->
-          process_exx.(exx, caller)
+          {:ok, escape_ex_xml(ex_xml)}
+        process_ex_xml ->
+          process_ex_xml.(ex_xml, caller)
       end
     end
   end
 
-  def escape_exx(list) when is_list(list) do
-    do_escape_exx(list)
+  def escape_ex_xml(list) when is_list(list) do
+    do_escape_ex_xml(list)
   end
 
-  defp do_escape_exx(list) when is_list(list) do
-    Enum.map(list, &do_escape_exx/1)
+  defp do_escape_ex_xml(list) when is_list(list) do
+    Enum.map(list, &do_escape_ex_xml/1)
   end
 
-  defp do_escape_exx(%{__struct__: module} = struct) do
+  defp do_escape_ex_xml(%{__struct__: module} = struct) do
     keyword_list =
       struct
       |> Map.from_struct()
-      |> Enum.map(&do_escape_exx/1)
+      |> Enum.map(&do_escape_ex_xml/1)
 
     {:%, [], [{:__aliases__, [alias: false], [module]}, {:%{}, [], keyword_list}]}
   end
 
-  defp do_escape_exx(%{} = map) do
+  defp do_escape_ex_xml(%{} = map) do
     keyword_list =
       map
-      |> Enum.map(&do_escape_exx/1)
+      |> Enum.map(&do_escape_ex_xml/1)
 
     {:%{}, [], keyword_list}
   end
 
-  defp do_escape_exx({key, value}) do
-    {key, do_escape_exx(value)}
+  defp do_escape_ex_xml({key, value}) do
+    {key, do_escape_ex_xml(value)}
   end
 
-  defp do_escape_exx(other) do
+  defp do_escape_ex_xml(other) do
     other
   end
 
