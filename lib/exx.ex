@@ -8,8 +8,13 @@ defmodule Exx do
 
   defmacro __using__(_opts) do
     quote do
-      require Exx
       import Exx
+
+      defmacro sigil_x(params, options) do
+        caller = __CALLER__
+        module = __MODULE__
+        do_sigil_x(params, options, caller, module)
+      end
     end
   end
 
@@ -42,13 +47,14 @@ defmodule Exx do
 
   text =
     ignore(whitespace)
-    |> utf8_string([not: ?<], min: 1)
+    |> utf8_string([not: ?<, not: ?\n], min: 1)
+    |> reduce({:trim, []})
     |> label("text")
 
   sub =
     string("$")
     |> concat(ascii_string([?0..?9], min: 1))
-    |> traverse({:sub_context, []})
+    |> post_traverse({:sub_context, []})
     |> label("sub")
 
   quote_string =
@@ -58,12 +64,12 @@ defmodule Exx do
   quoted_attribute_text =
     ignore(whitespace)
     |> ignore(quote_string)
-    |> repeat_until(
-      choice([
+    |> repeat(
+      lookahead_not(ascii_char([?"]))
+      |> choice([
         ~s(\") |> string() |> replace(?'),
         utf8_char([])
-      ]),
-      [ascii_char([?"])]
+      ])
     )
     |> ignore(quote_string)
     |> reduce({List, :to_string, []})
@@ -81,9 +87,9 @@ defmodule Exx do
     ignore(whitespace)
     |> ignore(string("<"))
     |> concat(element_name)
-    |> repeat_until(
-      choice([attribute, ascii_char([?>]), string("/>")]),
-      [ascii_char([?>]), string("/>")]
+    |> repeat(
+      lookahead_not(choice([ascii_char([?>]), string("/>")]))
+      |> choice([attribute, ascii_char([?>]), string("/>")])
     )
     |> ignore(optional(string(">")))
     |> ignore(whitespace)
@@ -93,9 +99,9 @@ defmodule Exx do
   fragment_tag =
     ignore(whitespace)
     |> ignore(string("<"))
-    |> repeat_until(
-      choice([attribute, ascii_char([?>]), string("/>")]),
-      [ascii_char([?>]), string("/>")]
+    |> repeat(
+      lookahead_not(choice([ascii_char([?>]), string("/>")]))
+      |> choice([attribute, ascii_char([?>]), string("/>")])
     )
     |> ignore(string(">"))
     |> ignore(whitespace)
@@ -133,7 +139,10 @@ defmodule Exx do
   defcombinatorp(
     :xml,
     choice([fragment_tag, opening_tag])
-    |> repeat_until(choice([parsec(:xml), sub, text]), [string("</"), string("/>")])
+    |> repeat(
+      lookahead_not(choice([string("</"), string("/>")]))
+      |> choice([parsec(:xml), sub, text])
+    )
     |> choice([closing_fragment, closing_tag, self_closing])
     |> reduce({:fix_element, []})
   )
@@ -163,12 +172,6 @@ defmodule Exx do
 
   def list_to_context(bin) when is_binary(bin) do
     {bin, %{}}
-  end
-
-  defmacro sigil_x(params, options) do
-    caller = __CALLER__
-    module = __MODULE__
-    do_sigil_x(params, options, caller, module)
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _, _) do
@@ -290,6 +293,12 @@ defmodule Exx do
 
   defp fix_element(other) do
     other
+  end
+
+  defp trim([string]) when is_binary(string) do
+    string
+    |> String.trim()
+    |> List.wrap()
   end
 
   def get_meta_content({:attribute, [{:tag, [key]}, value]}, acc) do
