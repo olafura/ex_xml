@@ -23,7 +23,7 @@ defmodule ExXml.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_parsec, "~> 0.5"},
+      {:nimble_parsec, "~> 0.5"}
     ]
   end
 

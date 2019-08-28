@@ -4,10 +4,9 @@ defmodule ExXmlTest do
   use ExXml
   doctest ExXml
 
-  @process_ex_xml fn (ex_xml, _) ->
+  @process_ex_xml fn ex_xml, _ ->
     {:ok, escape_ex_xml(ex_xml)}
   end
-
 
   test "test simple ex_xml" do
     assert {:ok, _} =
@@ -16,8 +15,7 @@ defmodule ExXmlTest do
   end
 
   test "test simple ex_xml with fragment" do
-    assert {:ok, _} =
-      ~x(
+    assert {:ok, _} = ~x(
         <>
           <foo something=#{{1, 1}}>
             <bar2 something="a"/>
@@ -28,8 +26,7 @@ defmodule ExXmlTest do
   end
 
   test "test simple ex_xml with module name" do
-    assert {:ok, _} =
-      ~x(
+    assert {:ok, _} = ~x(
         <>
           <Foo something=#{{1, 1}}>
             <bar2 something="a"/>
@@ -67,7 +64,8 @@ defmodule ExXmlTest do
   end
 
   test "test advanced scenic graph with group options" do
-    assert {:ok, _} = ~x(
+    assert {:ok, _} =
+             ~x(
       <font=#{:roboto} font_size=#{24} theme=#{:dark}>
         <translate=#{{0, 20}}>
          <text translate=#{{15, 20}}>Various components</text>
@@ -96,11 +94,11 @@ defmodule ExXmlTest do
              <text_field id=#{:password} width=#{240} translate=#{{200, 200}}>A</text_field>
              <dropdown id=#{:dropdown} translate=#{{0, 202}}>
                #{
-                {
-                  [{"Choice 1", :choice_1}, {"Choice 2", :choice_2}, {"Choice 3", :choice_3}],
-                  :choice_1
-                }
+               {
+                 [{"Choice 1", :choice_1}, {"Choice 2", :choice_2}, {"Choice 3", :choice_3}],
+                 :choice_1
                }
+             }
              </dropdown>
          </>
        </>
@@ -132,14 +130,14 @@ defmodule ExXmlTest do
     {:ok, clear_button} = ~x(
       <button
         class_name="clear-completed"
-        on_click=#{fn (_) -> nil end}>
+        on_click=#{fn _ -> nil end}>
         Clear completed
       </button>
     )
 
     now_showing = "ALL_TODOS"
     count = 5
-    active_todo_word = if count > 1 , do: "items", else: "item"
+    active_todo_word = if count > 1, do: "items", else: "item"
 
     assert {:ok, _} = ~x(
       <footer class_name="footer">

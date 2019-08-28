@@ -124,7 +124,6 @@ defmodule ExXml do
     |> label("closing_fragment")
     |> tag(:closing_fragment)
 
-
   self_closing =
     ignore(whitespace)
     |> ignore(string("/>"))
@@ -193,16 +192,18 @@ defmodule ExXml do
       |> Enum.map(&clean_litteral/1)
       |> parse_ex_xml()
 
-    ast = if Kernel.function_exported?(module, :process_ex_xml, 2) do
-      module.process_ex_xml(ex_xml, caller)
-    else
-      case Module.get_attribute(caller.module, :process_ex_xml) do
-        nil ->
-          {:ok, escape_ex_xml(ex_xml)}
-        process_ex_xml ->
-          process_ex_xml.(ex_xml, caller)
+    ast =
+      if Kernel.function_exported?(module, :process_ex_xml, 2) do
+        module.process_ex_xml(ex_xml, caller)
+      else
+        case Module.get_attribute(caller.module, :process_ex_xml) do
+          nil ->
+            {:ok, escape_ex_xml(ex_xml)}
+
+          process_ex_xml ->
+            process_ex_xml.(ex_xml, caller)
+        end
       end
-    end
 
     ast |> Macro.to_string() |> Code.format_string!() |> IO.puts()
     ast
@@ -220,6 +221,7 @@ defmodule ExXml do
       case Module.get_attribute(caller.module, :process_ex_xml) do
         nil ->
           {:ok, escape_ex_xml(ex_xml)}
+
         process_ex_xml ->
           process_ex_xml.(ex_xml, caller)
       end
@@ -277,10 +279,14 @@ defmodule ExXml do
 
     if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
       with {:closing_tag, cl_tag} <- closing_tag do
-        raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(cl_tag)}"
+        raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
+                inspect(cl_tag)
+              }"
       else
         _ ->
-          raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(closing_tag)}"
+          raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
+                  inspect(closing_tag)
+                }"
       end
     end
 
@@ -312,7 +318,7 @@ defmodule ExXml do
   end
 
   defp clean_litteral(
-         {:::, _, [{{:., _, [Kernel, :to_string]}, _, [litteral]}, {:binary, _, nil}]}
+         {:"::", _, [{{:., _, [Kernel, :to_string]}, _, [litteral]}, {:binary, _, nil}]}
        ) do
     {:ok, litteral}
   end
