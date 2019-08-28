@@ -8,6 +8,7 @@ defmodule ExXml.MixProject do
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      description: "Elixir Xml library that work similar to JSX",
       package: package()
     ]
   end
