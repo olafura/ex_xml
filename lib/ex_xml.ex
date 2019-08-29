@@ -49,6 +49,7 @@ defmodule ExXml do
     ignore(whitespace)
     |> utf8_string([not: ?<, not: ?\n], min: 1)
     |> reduce({:trim, []})
+    |> post_traverse({:sub_context_in_text, []})
     |> label("text")
 
   sub =
@@ -331,5 +332,20 @@ defmodule ExXml do
     ref = args |> Enum.reverse() |> Enum.join()
     {:ok, value} = context |> Map.get(ref)
     {[value], context}
+  end
+
+  defp sub_context_in_text(_rest, args, context, _line, _offset) do
+    text = args |> Enum.reverse() |> Enum.join()
+
+    new_text =
+      Regex.split(~r/\$\d+/, text, include_captures: true)
+      |> Enum.map(fn text_fragment ->
+        case Map.get(context, text_fragment) do
+          {:ok, value} -> value
+          _ -> text_fragment
+        end
+      end)
+
+    {new_text, context}
   end
 end
