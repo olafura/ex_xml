@@ -1,6 +1,8 @@
 # ExXml - Elixir XML
 
-This is pre pre anything. Basic jsx like syntax works.
+[![Build Status](https://travis-ci.com/olafura/ex_xml.svg?branch=master)](https://travis-ci.com/olafura/ex_xml)
+
+Elixir Xml library that work similar to JSX
 
 ## Installation
 
