@@ -9,6 +9,7 @@ otp_release:
   - 20.3
   - 21.0
   - 22.0
+script: mix test; mix dialyzer
 matrix:
   exclude:
     - elixir: 1.6

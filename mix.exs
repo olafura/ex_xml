@@ -9,7 +9,8 @@ defmodule ExXml.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "Elixir Xml library that work similar to JSX",
-      package: package()
+      package: package(),
+      dialyzer: dialyzer()
     ]
   end
 
@@ -23,7 +24,8 @@ defmodule ExXml.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:nimble_parsec, "~> 0.5"}
+      {:nimble_parsec, "~> 0.5"},
+      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -33,6 +35,13 @@ defmodule ExXml.MixProject do
       licenses: ["Apache-2.0"],
       links: %{github: "https://github.com/olafura/ex_xml"},
       files: ~w(lib LICENSE mix.exs README.md)
+    ]
+  end
+
+  defp dialyzer do
+    [
+      plt_add_apps: [:mix, :ex_unit],
+      check_plt: true
     ]
   end
 end
