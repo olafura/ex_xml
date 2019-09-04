@@ -10,7 +10,7 @@ defmodule ExXml.MixProject do
       deps: deps(),
       description: "Elixir Xml library that work similar to JSX",
       package: package(),
-      dialyzer: dialyzer()
+      dialyzer: dialyzer(System.get_env("CI"))
     ]
   end
 
@@ -38,10 +38,18 @@ defmodule ExXml.MixProject do
     ]
   end
 
-  defp dialyzer do
+  defp dialyzer(nil) do
     [
       plt_add_apps: [:mix, :ex_unit],
       check_plt: true
+    ]
+  end
+
+  defp dialyzer(_) do
+    [
+      plt_add_apps: [:mix, :ex_unit],
+      check_plt: true,
+      plt_file: {:no_warn, "priv/plts/ex_xml.plt"}
     ]
   end
 end
