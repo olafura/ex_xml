@@ -11,7 +11,7 @@ otp_release:
   - 22.0
 script:
   - mix test
-  - mix dialyzer --halt-exit-status
+  - echo $TRAVIS_ELIXIR_VERSION; dpkg --compare-versions $TRAVIS_ELIXIR_VERSION "gt" "1.7"; if [ $? -eq "0" ]; then MIX_ENV=test mix dialyzer --halt-exit-status; fi
 cache:
   directories:
     - priv/plts
