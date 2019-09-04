@@ -230,7 +230,7 @@ defmodule ExXml do
     end
   end
 
-  @spec escape_ex_xml([...]) :: Macro.t
+  @spec escape_ex_xml([...]) :: Macro.t()
   def escape_ex_xml(list) when is_list(list) do
     do_escape_ex_xml(list)
   end
@@ -264,16 +264,17 @@ defmodule ExXml do
     other
   end
 
-  @spec fix_element_based_on_type(atom, [...], [...]) :: %Element{} | %Fragment{}
+  @spec fix_element_based_on_type(atom, [...], [...]) ::
+          {:ok, %Element{} | %Fragment{}} | {:error, String.t()}
   defp fix_element_based_on_type(:fragment, content, nested) do
     meta = Enum.reduce(content, %{}, &get_meta_content/2)
     {closing_fragment, new_nested} = List.pop_at(nested, -1)
 
     if {:closing_fragment, []} !== closing_fragment do
-      raise "Fragment isn't closed"
+      {:error, "Fragment isn't closed"}
+    else
+      {:ok, struct(Fragment, Map.put(meta, :children, List.flatten(new_nested)))}
     end
-
-    struct(Fragment, Map.put(meta, :children, List.flatten(new_nested)))
   end
 
   defp fix_element_based_on_type(:element, content, nested) do
@@ -283,25 +284,28 @@ defmodule ExXml do
 
     if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
       with {:closing_tag, cl_tag} <- closing_tag do
-        raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
-                inspect(cl_tag)
-              }"
+        {:error,
+         "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
+           inspect(cl_tag)
+         }"}
       else
         _ ->
-          raise "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
-                  inspect(closing_tag)
-                }"
+          {:error,
+           "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
+             inspect(closing_tag)
+           }"}
       end
+    else
+      {:ok, struct(Element, Map.put(meta, :children, List.flatten(new_nested)))}
     end
-
-    struct(Element, Map.put(meta, :children, List.flatten(new_nested)))
   end
 
-  @spec fix_element([{atom, [...]}, ...]) :: %Element{} | %Fragment{}
+  @spec fix_element([{atom, [...]}, ...]) :: %Element{} | %Fragment{} | {:error, String.t()}
   defp fix_element([{type, content} | nested]) do
-    fix_element_based_on_type(type, content, nested)
+    with {:ok, result} <- fix_element_based_on_type(type, content, nested) do
+      result
+    end
   end
-
 
   @spec trim([binary]) :: binary
   defp trim([string]) when is_binary(string) do
@@ -320,7 +324,7 @@ defmodule ExXml do
     |> Map.put(:type, type)
   end
 
-  @spec clean_litteral(Macro.t | binary) :: Macro.t | binary
+  @spec clean_litteral(Macro.t() | binary) :: Macro.t() | binary
   defp clean_litteral(
          {:"::", _, [{{:., _, [Kernel, :to_string]}, _, [litteral]}, {:binary, _, nil}]}
        ) do
