@@ -14,6 +14,12 @@ defmodule ExXmlTest do
              |> parse_ex_xml()
   end
 
+  test "test bad ex_xml" do
+    assert {:error,
+            "expected self_closing while processing closing_fragment or closing_tag or self_closing"} =
+             ~x(<foo>)
+  end
+
   test "test simple ex_xml with fragment" do
     assert {:ok, _} = ~x(
         <>

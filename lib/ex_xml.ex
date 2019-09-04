@@ -147,6 +147,7 @@ defmodule ExXml do
     |> reduce({:fix_element, []})
   )
 
+  @spec parse_ex_xml([...]) :: {:ok, [%Element{} | %Fragment{}]} | {:error, String.t()}
   def parse_ex_xml(ex_xml) do
     {bin, context} = list_to_context(ex_xml)
 
@@ -155,6 +156,7 @@ defmodule ExXml do
     end
   end
 
+  @spec list_to_context([...]) :: {binary, map}
   def list_to_context(list) when is_list(list) do
     {_, context, acc_list} =
       list
@@ -168,10 +170,6 @@ defmodule ExXml do
       end)
 
     {acc_list |> Enum.reverse() |> Enum.join(), Enum.into(context, %{})}
-  end
-
-  def list_to_context(bin) when is_binary(bin) do
-    {bin, %{}}
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _, _) do
@@ -211,24 +209,28 @@ defmodule ExXml do
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, '', caller, module) do
-    {:ok, ex_xml} =
-      pieces
-      |> Enum.map(&clean_litteral/1)
-      |> parse_ex_xml()
+    with {:ok, ex_xml} <-
+           pieces
+           |> Enum.map(&clean_litteral/1)
+           |> parse_ex_xml() do
+      if Kernel.function_exported?(module, :process_ex_xml, 2) do
+        module.process_ex_xml(ex_xml, caller)
+      else
+        case Module.get_attribute(caller.module, :process_ex_xml) do
+          nil ->
+            {:ok, escape_ex_xml(ex_xml)}
 
-    if Kernel.function_exported?(module, :process_ex_xml, 2) do
-      module.process_ex_xml(ex_xml, caller)
-    else
-      case Module.get_attribute(caller.module, :process_ex_xml) do
-        nil ->
-          {:ok, escape_ex_xml(ex_xml)}
-
-        process_ex_xml ->
-          process_ex_xml.(ex_xml, caller)
+          process_ex_xml ->
+            process_ex_xml.(ex_xml, caller)
+        end
       end
+    else
+      {:error, message, _rest, _context, _line, _column} ->
+        {:error, message}
     end
   end
 
+  @spec escape_ex_xml([...]) :: Macro.t
   def escape_ex_xml(list) when is_list(list) do
     do_escape_ex_xml(list)
   end
@@ -262,6 +264,7 @@ defmodule ExXml do
     other
   end
 
+  @spec fix_element_based_on_type(atom, [...], [...]) :: %Element{} | %Fragment{}
   defp fix_element_based_on_type(:fragment, content, nested) do
     meta = Enum.reduce(content, %{}, &get_meta_content/2)
     {closing_fragment, new_nested} = List.pop_at(nested, -1)
@@ -294,20 +297,19 @@ defmodule ExXml do
     struct(Element, Map.put(meta, :children, List.flatten(new_nested)))
   end
 
+  @spec fix_element([{atom, [...]}, ...]) :: %Element{} | %Fragment{}
   defp fix_element([{type, content} | nested]) do
     fix_element_based_on_type(type, content, nested)
   end
 
-  defp fix_element(other) do
-    other
-  end
 
+  @spec trim([binary]) :: binary
   defp trim([string]) when is_binary(string) do
     string
     |> String.trim()
-    |> List.wrap()
   end
 
+  @spec get_meta_content({atom, [...]}, map) :: map
   def get_meta_content({:attribute, [{:tag, [key]}, value]}, acc) do
     Map.update(acc, :attributes, %{key => value}, &Map.put(&1, key, value))
   end
@@ -318,6 +320,7 @@ defmodule ExXml do
     |> Map.put(:type, type)
   end
 
+  @spec clean_litteral(Macro.t | binary) :: Macro.t | binary
   defp clean_litteral(
          {:"::", _, [{{:., _, [Kernel, :to_string]}, _, [litteral]}, {:binary, _, nil}]}
        ) do
@@ -328,15 +331,15 @@ defmodule ExXml do
     other
   end
 
+  @spec sub_context(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
   defp sub_context(_rest, args, context, _line, _offset) do
     ref = args |> Enum.reverse() |> Enum.join()
     {:ok, value} = context |> Map.get(ref)
     {[value], context}
   end
 
-  defp sub_context_in_text(_rest, args, context, _line, _offset) do
-    text = args |> Enum.reverse() |> Enum.join()
-
+  @spec sub_context_in_text(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
+  defp sub_context_in_text(_rest, [text], context, _line, _offset) do
     new_text =
       Regex.split(~r/\$\d+/, text, include_captures: true)
       |> Enum.map(fn text_fragment ->
