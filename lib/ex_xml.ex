@@ -1,6 +1,62 @@
 defmodule ExXml do
   @moduledoc """
-  Documentation for ExXml.
+  ExXml allows you to use XML in your library to construct code.
+  This can be helpful if you need to deal more descriptive type of
+  programming like the ones that are already using a SGML or XML languages
+  like HTML and ODF. It also allows you to compose components out of Pascal
+  case XML elements. You can also have a list of elements which are wrapped
+  with a fragment.
+
+  Out of the box ExXml sigil `~x()` constructs the `Element` and `Fragment`
+  structs that you can convert to quoted version of Elixir to create code out
+  of this XML like data. It's as close to JSX as can be done in Elixir.
+
+  ## Examples
+
+  Simple syntax with some nesting and a self closing element
+
+      ~x(
+        <foo something=#{"b"}>
+          <bar2 something="a"/>
+          <a>
+            2
+          </a>
+        </foo>
+      )
+
+
+  Now with a fragment
+
+      ~x(
+        <>
+          <foo>
+            <bar2 something="a"/>
+            <a>
+              2
+            </a>
+          </foo>
+        </>
+      )
+
+  This allows you to use a module if you want
+
+      ~x(
+        <Foo>
+          <bar2 something="a"/>
+          <a>2</a>
+        </Foo>
+      )
+
+  ## How do you implement your library with ExXml
+
+  You have to include `use ExXml` in your module then
+  implement either `parse_ex_xml` function in our library
+  if you want to expose the sigil x syntax or `@parse_ex_xml`
+  attribute if you want to use the syntax only within your library.
+  You have to return a quoted from of you data. You can look at Elixir
+  Macro documentation for that. Because the sigil syntax is a macro and
+  you are probably using this library to construct something else than
+  just the output of this library.
   """
   import NimbleParsec
 
