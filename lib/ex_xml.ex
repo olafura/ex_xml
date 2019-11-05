@@ -408,6 +408,8 @@ defmodule ExXml do
           _ -> text_fragment
         end
       end)
+      |> Enum.reject(&match?("", &1))
+      |> :lists.reverse()
 
     {new_text, context}
   end
