@@ -179,4 +179,74 @@ defmodule ExXmlTest do
       </footer>
     )
   end
+
+  test "string interpolation test" do
+    expected = [
+      %ExXml.Element{
+        attributes: %{},
+        children: ["Hello ", "World"],
+        name: "div",
+        type: :tag
+      }
+    ]
+
+    world = "World"
+    assert {:ok, expected} == ~x(<div>Hello #{world}</div>)
+  end
+
+  test "order test with elements" do
+    expected = [
+      %ExXml.Element{
+        attributes: %{},
+        children: [
+          %ExXml.Element{attributes: %{}, children: ["1"], name: "p", type: :tag},
+          %ExXml.Element{attributes: %{}, children: ["2"], name: "p", type: :tag}
+        ],
+        name: "div",
+        type: :tag
+      }
+    ]
+
+    assert {:ok, expected} == ~x(<div><p>1</p><p>2</p></div>)
+  end
+
+  test "order test with elements and text" do
+    expected = [
+      %ExXml.Element{
+        attributes: %{},
+        children: [
+          "Hello",
+          %ExXml.Element{attributes: %{}, children: ["1"], name: "p", type: :tag},
+          "World",
+          %ExXml.Element{attributes: %{}, children: ["2"], name: "p", type: :tag}
+        ],
+        name: "div",
+        type: :tag
+      }
+    ]
+
+    assert {:ok, expected} == ~x(<div>Hello<p>1</p>World<p>2</p></div>)
+  end
+
+  test "order test with elements, text and string interpolation" do
+    world = "World"
+
+    expected = [
+      %ExXml.Element{
+        attributes: %{},
+        children: [
+          "Hello World",
+          %ExXml.Element{attributes: %{}, children: ["1"], name: "p", type: :tag},
+          "Hello ",
+          "World",
+          %ExXml.Element{attributes: %{}, children: ["2"], name: "p", type: :tag}
+        ],
+        name: "div",
+        type: :tag
+      }
+    ]
+
+    assert {:ok, expected} ==
+             ~x(<div>Hello World<p>1</p>Hello #{world}<p>2</p></div>)
+  end
 end
