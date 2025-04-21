@@ -228,12 +228,12 @@ defmodule ExXml do
     {acc_list |> Enum.reverse() |> Enum.join(), Enum.into(context, %{})}
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'raw', _, _) do
+  def do_sigil_x({:<<>>, _meta, pieces}, ~c"raw", _, _) do
     pieces
     |> Enum.map(&clean_litteral/1)
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'parse', _, _) do
+  def do_sigil_x({:<<>>, _meta, pieces}, ~c"parse", _, _) do
     pieces
     |> Enum.map(&clean_litteral/1)
     |> parse_ex_xml()
@@ -241,7 +241,7 @@ defmodule ExXml do
     nil
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, 'debug', caller, module) do
+  def do_sigil_x({:<<>>, _meta, pieces}, ~c"debug", caller, module) do
     {:ok, ex_xml} =
       pieces
       |> Enum.map(&clean_litteral/1)
@@ -264,7 +264,7 @@ defmodule ExXml do
     ast
   end
 
-  def do_sigil_x({:<<>>, _meta, pieces}, '', caller, module) do
+  def do_sigil_x({:<<>>, _meta, pieces}, ~c"", caller, module) do
     with {:ok, ex_xml} <-
            pieces
            |> Enum.map(&clean_litteral/1)
@@ -341,15 +341,11 @@ defmodule ExXml do
     if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
       with {:closing_tag, cl_tag} <- closing_tag do
         {:error,
-         "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
-           inspect(cl_tag)
-         }"}
+         "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(cl_tag)}"}
       else
         _ ->
           {:error,
-           "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{
-             inspect(closing_tag)
-           }"}
+           "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(closing_tag)}"}
       end
     else
       {:ok, struct(Element, Map.put(meta, :children, List.flatten(new_nested)))}
@@ -392,14 +388,14 @@ defmodule ExXml do
   end
 
   @spec sub_context(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
-  defp sub_context(_rest, args, context, _line, _offset) do
+  defp sub_context(rest, args, context, _line, _offset) do
     ref = args |> Enum.reverse() |> Enum.join()
     {:ok, value} = context |> Map.get(ref)
-    {[value], context}
+    {rest, [value], context}
   end
 
   @spec sub_context_in_text(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
-  defp sub_context_in_text(_rest, [text], context, _line, _offset) do
+  defp sub_context_in_text(rest, [text], context, _line, _offset) do
     new_text =
       Regex.split(~r/\$\d+/, text, include_captures: true)
       |> Enum.map(fn text_fragment ->
@@ -411,6 +407,6 @@ defmodule ExXml do
       |> Enum.reject(&match?("", &1))
       |> :lists.reverse()
 
-    {new_text, context}
+    {rest, new_text, context}
   end
 end

@@ -99,12 +99,7 @@ defmodule ExXmlTest do
              <text_field id=#{:text} width=#{240} translate=#{{200, 160}}>A</text_field>
              <text_field id=#{:password} width=#{240} translate=#{{200, 200}}>A</text_field>
              <dropdown id=#{:dropdown} translate=#{{0, 202}}>
-               #{
-               {
-                 [{"Choice 1", :choice_1}, {"Choice 2", :choice_2}, {"Choice 3", :choice_3}],
-                 :choice_1
-               }
-             }
+               #{{[{"Choice 1", :choice_1}, {"Choice 2", :choice_2}, {"Choice 3", :choice_3}], :choice_1}}
              </dropdown>
          </>
        </>
