@@ -62,11 +62,14 @@ defmodule ExXml do
 
   alias __MODULE__.{Element, Fragment}
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
+    sigil_name = Keyword.get(opts, :name, :x)
+    sigil = :"sigil_#{sigil_name}"
+
     quote do
       import ExXml
 
-      defmacro sigil_x(params, options) do
+      defmacro unquote(sigil)(params, options) do
         caller = __CALLER__
         module = __MODULE__
         do_sigil_x(params, options, caller, module)
