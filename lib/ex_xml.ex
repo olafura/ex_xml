@@ -190,6 +190,9 @@ defmodule ExXml do
     |> ignore(whitespace)
     |> label("self_closing")
 
+  @spec parse_xml(binary) ::
+          {:ok, [Element.t() | Fragment.t()], binary, map, {integer, integer}, integer}
+          | {:error, binary, binary, map, {integer, integer}, integer}
   defparsec(
     :parse_xml,
     parsec(:xml)
@@ -206,7 +209,9 @@ defmodule ExXml do
     |> reduce({:fix_element, []})
   )
 
-  @spec parse_ex_xml([...]) :: {:ok, [%Element{} | %Fragment{}]} | {:error, String.t()}
+  @spec parse_ex_xml([...]) ::
+          {:ok, [Element.t() | Fragment.t()]}
+          | {:error, binary, binary, map, {integer, integer}, integer}
   def parse_ex_xml(ex_xml) do
     {bin, context} = list_to_context(ex_xml)
 
@@ -268,23 +273,21 @@ defmodule ExXml do
   end
 
   def do_sigil_x({:<<>>, _meta, pieces}, ~c"", caller, module) do
-    with {:ok, ex_xml} <-
-           pieces
-           |> Enum.map(&clean_litteral/1)
-           |> parse_ex_xml() do
-      if Kernel.function_exported?(module, :process_ex_xml, 2) do
+    case {pieces
+          |> Enum.map(&clean_litteral/1)
+          |> parse_ex_xml(),
+          {Kernel.function_exported?(module, :process_ex_xml, 2),
+           Module.get_attribute(caller.module, :process_ex_xml)}} do
+      {{:ok, ex_xml}, {true, _}} ->
         module.process_ex_xml(ex_xml, caller)
-      else
-        case Module.get_attribute(caller.module, :process_ex_xml) do
-          nil ->
-            {:ok, escape_ex_xml(ex_xml)}
 
-          process_ex_xml ->
-            process_ex_xml.(ex_xml, caller)
-        end
-      end
-    else
-      {:error, message, _rest, _context, _line, _column} ->
+      {{:ok, ex_xml}, {_, nil}} ->
+        {:ok, escape_ex_xml(ex_xml)}
+
+      {{:ok, ex_xml}, {_, process_ex_xml}} ->
+        process_ex_xml.(ex_xml, caller)
+
+      {{:error, message, _rest, _context, _line, _column}, _} ->
         {:error, message}
     end
   end
@@ -324,7 +327,7 @@ defmodule ExXml do
   end
 
   @spec fix_element_based_on_type(atom, [...], [...]) ::
-          {:ok, %Element{} | %Fragment{}} | {:error, String.t()}
+          {:ok, Element.t() | Fragment.t()} | {:error, String.t()}
   defp fix_element_based_on_type(:fragment, content, nested) do
     meta = Enum.reduce(content, %{}, &get_meta_content/2)
     {closing_fragment, new_nested} = List.pop_at(nested, -1)
@@ -341,21 +344,21 @@ defmodule ExXml do
     tag = List.first(content)
     {closing_tag, new_nested} = List.pop_at(nested, -1)
 
-    if not (is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag) do
-      with {:closing_tag, cl_tag} <- closing_tag do
+    case {is_nil(closing_tag) or {:closing_tag, List.wrap(tag)} === closing_tag, closing_tag} do
+      {true, _} ->
+        {:ok, struct(Element, Map.put(meta, :children, List.flatten(new_nested)))}
+
+      {_, {:closing_tag, cl_tag}} ->
         {:error,
          "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(cl_tag)}"}
-      else
-        _ ->
-          {:error,
-           "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(closing_tag)}"}
-      end
-    else
-      {:ok, struct(Element, Map.put(meta, :children, List.flatten(new_nested)))}
+
+      _ ->
+        {:error,
+         "Closing tag doesn't match opening tag open_tag: #{inspect(tag)} closing_tag: #{inspect(closing_tag)}"}
     end
   end
 
-  @spec fix_element([{atom, [...]}, ...]) :: %Element{} | %Fragment{} | {:error, String.t()}
+  @spec fix_element([{atom, [...]}, ...]) :: Element.t() | Fragment.t() | {:error, String.t()}
   defp fix_element([{type, content} | nested]) do
     with {:ok, result} <- fix_element_based_on_type(type, content, nested) do
       result
@@ -390,15 +393,19 @@ defmodule ExXml do
     other
   end
 
-  @spec sub_context(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
-  defp sub_context(rest, args, context, _line, _offset) do
+  @spec sub_context(binary, [binary], map, {integer, integer}, integer) ::
+          {binary, [binary], map}
+  defp sub_context(rest, args, %{} = context, _line, _offset) do
     ref = args |> Enum.reverse() |> Enum.join()
     {:ok, value} = context |> Map.get(ref)
     {rest, [value], context}
   end
 
-  @spec sub_context_in_text(binary, [binary], map, {integer, integer}, integer) :: {[...], map}
-  defp sub_context_in_text(rest, [text], context, _line, _offset) do
+  @spec sub_context_in_text(binary, [binary], map, {integer, integer}, integer) ::
+          {binary, [binary], map}
+  defp sub_context_in_text(rest, args, %{} = context, _line, _offset) do
+    text = args |> Enum.reverse() |> Enum.join()
+
     new_text =
       Regex.split(~r/\$\d+/, text, include_captures: true)
       |> Enum.map(fn text_fragment ->
